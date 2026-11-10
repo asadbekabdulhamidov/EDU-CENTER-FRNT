@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { Avatar, Badge, Button, Card, Empty, IconButton, Input, PageHeader, SearchInput, Select, StatCard, Tabs, confirmAction } from '../components/ui'
 import PaymentModal from '../components/PaymentModal'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { Link } from '../router'
 import { t } from '../i18n'
 import { currentMonth, fmtDate, monthLabel, money, PAYMENT_METHODS } from '../utils/format'
 import { debtors, groupById, studentById } from '../utils/finance'
 
 export default function Payments() {
-  const { db, remove, notify } = useStore()
+  const { db, user, remove, notify } = useStore()
   const [tab, setTab] = useState('payments')
   const [month, setMonth] = useState(currentMonth())
   const [method, setMethod] = useState('')
@@ -38,8 +39,8 @@ export default function Payments() {
   }
 
   const exportCsv = () => {
-    const head = [t('field.date'), t('field.student'), t('field.group'), t('field.forMonth'), t('field.method'), t('field.amount')]
-    const rows = list.map((p) => [p.date, studentById(db, p.studentId)?.fullName || '', groupById(db, p.groupId)?.name || '', p.month, t('method.' + p.method), p.amount])
+    const head = [t('field.date'), t('field.student'), t('field.group'), t('field.forMonth'), t('field.method'), t('pay.receivedBy'), t('field.amount')]
+    const rows = list.map((p) => [p.date, studentById(db, p.studentId)?.fullName || '', groupById(db, p.groupId)?.name || '', p.month, t('method.' + p.method), db.users.find((u) => u.id === p.createdBy)?.fullName || '', p.amount])
     const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
@@ -95,7 +96,7 @@ export default function Payments() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>{t('field.date')}</th><th>{t('field.student')}</th><th>{t('field.group')}</th><th>{t('field.method')}</th><th>{t('field.note')}</th><th className="num">{t('field.amount')}</th><th /></tr>
+                  <tr><th>{t('field.date')}</th><th>{t('field.student')}</th><th>{t('field.group')}</th><th>{t('field.method')}</th><th>{t('pay.receivedBy')}</th><th>{t('field.note')}</th><th className="num">{t('field.amount')}</th><th /></tr>
                 </thead>
                 <tbody>
                   {list.map((p) => {
@@ -106,15 +107,16 @@ export default function Payments() {
                         <td>{s ? <Link to={`/students/${s.id}`} className="person"><Avatar name={s.fullName} size={28} /><span>{s.fullName}</span></Link> : '—'}</td>
                         <td>{groupById(db, p.groupId)?.name || '—'}</td>
                         <td><Badge>{t('method.' + p.method)}</Badge></td>
+                        <td className="nowrap">{db.users.find((u) => u.id === p.createdBy)?.fullName || <span className="muted">—</span>}</td>
                         <td className="muted">{p.note || ''}</td>
                         <td className="num"><b>{money(p.amount)}</b></td>
-                        <td className="actions"><IconButton icon="trash" tone="red" title={t('common.delete')} onClick={() => del(p)} /></td>
+                        <td className="actions">{can(user, 'payments.delete') && <IconButton icon="trash" tone="red" title={t('common.delete')} onClick={() => del(p)} />}</td>
                       </tr>
                     )
                   })}
                 </tbody>
                 <tfoot>
-                  <tr><td colSpan={5}>{t('common.total')}</td><td className="num"><b>{money(total)}</b></td><td /></tr>
+                  <tr><td colSpan={6}>{t('common.total')}</td><td className="num"><b>{money(total)}</b></td><td /></tr>
                 </tfoot>
               </table>
             </div>

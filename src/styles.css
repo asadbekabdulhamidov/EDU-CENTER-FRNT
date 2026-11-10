@@ -412,3 +412,28 @@ a.group-card:hover { border-color: var(--brand); transform: translateY(-2px); }
   .info-list { grid-template-columns: 1fr; gap: 2px; }
   .info-list dd { margin-bottom: 8px; }
 }
+
+/* ================= Rollar ================= */
+.demo-hint { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.demo-accounts { display: grid; gap: 6px; }
+.demo-accounts button { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 9px; padding: 8px 10px; cursor: pointer; font-size: 12.5px; }
+.demo-accounts button:hover { border-color: var(--brand); background: var(--brand-50); }
+.demo-accounts b { color: var(--text); }
+.code { background: var(--gray-bg); padding: 2px 7px; border-radius: 6px; font-size: 12.5px; font-weight: 600; }
+.row-off td { opacity: .55; }
+.role-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.role-legend > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.role-legend .badge { align-self: flex-start; }
+.small-note { font-size: 12.5px; margin-top: -6px; }
+.form-section { display: flex; flex-direction: column; gap: 2px; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--line-strong); }
+.form-section span { font-size: 12.5px; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week-day { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; display: flex; flex-direction: column; gap: 5px; min-height: 120px; font-size: 12px; }
+.week-day > b { text-align: center; color: var(--muted); }
+.week-day.today { border-color: var(--brand); background: var(--brand-50); }
+.week-day.today > b { color: var(--brand); }
+.week-item { background: var(--surface); border-radius: 7px; padding: 5px 6px; font-weight: 700; border: 1px solid var(--line); line-height: 1.25; }
+.week-item span { display: block; color: var(--muted); font-weight: 600; font-size: 11px; }
+.week-item:hover { border-color: var(--brand); }
+@media (max-width: 900px) { .role-legend { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .week { grid-template-columns: repeat(4, 1fr); } }

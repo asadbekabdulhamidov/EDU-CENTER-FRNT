@@ -3,19 +3,25 @@ import { Avatar, Badge, Button, Card, Empty, Field, IconButton, Modal, PageHeade
 import PaymentModal from '../components/PaymentModal'
 import { GroupForm } from './Groups'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { Link, navigate } from '../router'
 import { t } from '../i18n'
 import { currentMonth, fmtDate, label, money, TONES, wdLabel } from '../utils/format'
 import { attendanceStats, courseById, dueForGroup, groupStudents, studentPaid, teacherById } from '../utils/finance'
 
 export default function GroupDetail({ id }) {
-  const { db, update, remove, notify } = useStore()
+  const { db, user, update, remove, notify } = useStore()
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
   const [addId, setAddId] = useState('')
   const [payFor, setPayFor] = useState(null)
   const g = db.groups.find((x) => x.id === id)
   if (!g) return <Empty icon="alert" title={t('common.notFound')} action={<Link className="btn btn-ghost" to="/groups">{t('common.back')}</Link>} />
+  if (can(user, 'scope.own') && g.teacherId !== user.teacherId) return <Empty icon="lock" title={t('common.noAccess')} text={t('common.noAccessHint')} />
+  const canEdit = can(user, 'groups.edit')
+  const canPay = can(user, 'payments.add')
+  const showMoney = can(user, 'money.view')
+  const canOpenStudent = can(user, 'page.students')
 
   const month = currentMonth()
   const students = groupStudents(db, g.id).sort((a, b) => a.fullName.localeCompare(b.fullName))
@@ -57,8 +63,8 @@ export default function GroupDetail({ id }) {
         subtitle={`${courseById(db, g.courseId)?.name || ''} · ${teacherById(db, g.teacherId)?.fullName || ''}`}
         actions={
           <>
-            <Button variant="ghost" icon="trash" onClick={delGroup}>{t('common.delete')}</Button>
-            <Button variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t('common.edit')}</Button>
+            {canEdit && <Button variant="ghost" icon="trash" onClick={delGroup}>{t('common.delete')}</Button>}
+            {canEdit && <Button variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t('common.edit')}</Button>}
             <Link className="btn btn-primary" to={`/attendance/${g.id}`}>{t('att.take')}</Link>
           </>
         }
@@ -66,15 +72,24 @@ export default function GroupDetail({ id }) {
 
       <div className="stats">
         <StatCard label={t('nav.students')} value={students.length} icon="students" tone="green" foot={`${g.days.map(wdLabel).join(', ')} · ${g.startTime}–${g.endTime}`} />
-        <StatCard label={t('group.collected')} value={money(collected)} icon="wallet" tone="blue" foot={`${t('pay.due')}: ${money(expected)}`} />
-        <StatCard label={t('pay.left')} value={money(expected - collected)} icon="alert" tone="red" />
+        {showMoney ? (
+          <>
+            <StatCard label={t('group.collected')} value={money(collected)} icon="wallet" tone="blue" foot={`${t('pay.due')}: ${money(expected)}`} />
+            <StatCard label={t('pay.left')} value={money(expected - collected)} icon="alert" tone="red" />
+          </>
+        ) : (
+          <>
+            <StatCard label={t('pay.paidCount')} value={`${rows.filter((r) => r.due > 0 && !r.left).length} / ${rows.filter((r) => r.due > 0).length}`} icon="wallet" tone="blue" />
+            <StatCard label={t('pay.debtors')} value={rows.filter((r) => r.left > 0).length} icon="alert" tone="red" foot={t('th.debtHint')} />
+          </>
+        )}
         <StatCard label={t('att.rate')} value={`${stats.rate}%`} icon="check" tone="amber" foot={`${g.room} · ${t('field.startDate')}: ${fmtDate(g.startDate)}`} />
       </div>
 
       <Card
         title={t('group.studentsList')}
         pad={false}
-        actions={<Button size="sm" icon="plus" onClick={() => setAdding(true)}>{t('group.addStudent')}</Button>}
+        actions={canEdit && <Button size="sm" icon="plus" onClick={() => setAdding(true)}>{t('group.addStudent')}</Button>}
       >
         {rows.length === 0 ? (
           <Empty icon="students" title={t('group.noStudents')} />
@@ -84,25 +99,38 @@ export default function GroupDetail({ id }) {
               <thead>
                 <tr>
                   <th>#</th><th>{t('field.fullName')}</th><th>{t('field.phone')}</th><th>{t('att.rate')}</th>
-                  <th className="num">{t('pay.due')}</th><th className="num">{t('pay.paid')}</th><th />
+                  {showMoney ? <><th className="num">{t('pay.due')}</th><th className="num">{t('pay.paid')}</th></> : <th>{t('field.payStatus')}</th>}
+                  {(canPay || canEdit) && <th />}
                 </tr>
               </thead>
               <tbody>
                 {rows.map(({ s, due, paid, left, att }, i) => (
                   <tr key={s.id}>
                     <td className="muted">{i + 1}</td>
-                    <td><Link to={`/students/${s.id}`} className="person"><Avatar name={s.fullName} size={30} /><span>{s.fullName}</span></Link></td>
+                    <td>
+                      {canOpenStudent
+                        ? <Link to={`/students/${s.id}`} className="person"><Avatar name={s.fullName} size={30} /><span>{s.fullName}</span></Link>
+                        : <span className="person"><Avatar name={s.fullName} size={30} /><span>{s.fullName}</span></span>}
+                    </td>
                     <td className="nowrap">{s.phone}</td>
                     <td>
                       <div className="meter"><span style={{ width: att.rate + '%' }} /></div>
                       <small className="muted">{att.rate}%</small>
                     </td>
-                    <td className="num">{money(due)}</td>
-                    <td className="num">{left ? <b className="text-red">{money(paid)}</b> : <span className="text-green">{money(paid)} ✓</span>}</td>
-                    <td className="actions">
-                      <IconButton icon="wallet" tone="green" title={t('pay.accept')} onClick={() => setPayFor(s.id)} />
-                      <IconButton icon="x" tone="red" title={t('group.remove')} onClick={() => removeFromGroup(s)} />
-                    </td>
+                    {showMoney ? (
+                      <>
+                        <td className="num">{money(due)}</td>
+                        <td className="num">{left ? <b className="text-red">{money(paid)}</b> : <span className="text-green">{money(paid)} ✓</span>}</td>
+                      </>
+                    ) : (
+                      <td>{due === 0 ? <span className="muted">—</span> : left ? <Badge tone="red">{t('pay.debtor')}</Badge> : <Badge tone="green">{t('pay.ok')}</Badge>}</td>
+                    )}
+                    {(canPay || canEdit) && (
+                      <td className="actions">
+                        {canPay && <IconButton icon="wallet" tone="green" title={t('pay.accept')} onClick={() => setPayFor(s.id)} />}
+                        {canEdit && <IconButton icon="x" tone="red" title={t('group.remove')} onClick={() => removeFromGroup(s)} />}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

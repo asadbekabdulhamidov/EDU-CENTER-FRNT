@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Button, Empty, Field, IconButton, Input, Modal, PageHeader, Textarea, confirmAction, useForm } from '../components/ui'
 import Icon from '../components/Icon'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { t } from '../i18n'
 import { money } from '../utils/format'
 import { groupStudents } from '../utils/finance'
 
 export default function Courses() {
-  const { db, remove, notify } = useStore()
+  const { db, user, remove, notify } = useStore()
+  const canEdit = can(user, 'courses.edit')
   const [edit, setEdit] = useState(null)
 
   const del = (c) => {
@@ -25,7 +27,7 @@ export default function Courses() {
       <PageHeader
         title={t('nav.courses')}
         subtitle={t('course.subtitle')}
-        actions={<Button icon="plus" onClick={() => setEdit({})}>{t('course.add')}</Button>}
+        actions={canEdit && <Button icon="plus" onClick={() => setEdit({})}>{t('course.add')}</Button>}
       />
       {db.courses.length === 0 ? (
         <Empty icon="book" />
@@ -38,10 +40,10 @@ export default function Courses() {
               <div key={c.id} className="group-card course-card">
                 <div className="group-card-head">
                   <span className="course-icon"><Icon name="book" size={20} /></span>
-                  <div className="row-actions">
+                  {canEdit && <div className="row-actions">
                     <IconButton icon="edit" title={t('common.edit')} onClick={() => setEdit(c)} />
                     <IconButton icon="trash" tone="red" title={t('common.delete')} onClick={() => del(c)} />
-                  </div>
+                  </div>}
                 </div>
                 <h3>{c.name}</h3>
                 <p className="muted">{c.description || '—'}</p>

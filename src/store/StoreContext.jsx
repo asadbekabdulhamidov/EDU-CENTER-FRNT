@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { createSeed, emptyDb } from './seed'
+import { createSeed, demoUsers, emptyDb } from './seed'
 import { uid } from '../utils/format'
 import { getLang, setLang } from '../i18n'
 
 const DB_KEY = 'educenter_db_v1'
 const SESSION_KEY = 'educenter_session'
 
-const COLLECTIONS = ['courses', 'teachers', 'groups', 'students', 'payments', 'attendance', 'leads', 'expenses']
+const COLLECTIONS = ['users', 'courses', 'teachers', 'groups', 'students', 'payments', 'attendance', 'leads', 'expenses']
 
 function safeGet(key) {
   try {
@@ -25,7 +25,7 @@ function safeSet(key, value) {
   }
 }
 
-/** Import qilingan ma'lumotni tekshiradi va yetishmayotgan maydonlarni to'ldiradi */
+/** Import qilingan / eski ma'lumotni tekshiradi, yetishmayotgan maydonlarni to'ldiradi */
 export function normalizeDb(data) {
   if (!data || typeof data !== 'object') throw new Error('invalid')
   const base = emptyDb()
@@ -33,6 +33,9 @@ export function normalizeDb(data) {
   COLLECTIONS.forEach((c) => {
     if (!Array.isArray(out[c])) out[c] = []
   })
+  // Migratsiya: rollardan oldingi versiyada faqat settings.admin bor edi
+  if (!out.users.length) out.users = demoUsers(out.teachers, data.settings?.admin)
+  delete out.settings.admin
   return out
 }
 
@@ -40,8 +43,8 @@ const StoreContext = createContext(null)
 
 export function StoreProvider({ children }) {
   const [db, setDb] = useState(() => {
-    const saved = safeGet(DB_KEY)
     try {
+      const saved = safeGet(DB_KEY)
       return saved ? normalizeDb(saved) : createSeed()
     } catch {
       return createSeed()
@@ -50,15 +53,25 @@ export function StoreProvider({ children }) {
   const [session, setSession] = useState(() => safeGet(SESSION_KEY))
   const [toasts, setToasts] = useState([])
   const [lang, setLangState] = useState(getLang)
+
+  // Joriy foydalanuvchi har doim bazadan olinadi (rol yoki parol o'zgarsa darhol ta'sir qiladi)
+  const user = useMemo(() => {
+    const u = session?.userId && db.users.find((x) => x.id === session.userId)
+    return u && u.active !== false ? u : null
+  }, [db.users, session])
+
+  const dbRef = useRef(db)
+  dbRef.current = db
+  const userRef = useRef(user)
+  userRef.current = user
+
+  useEffect(() => safeSet(DB_KEY, db), [db])
+  useEffect(() => safeSet(SESSION_KEY, user ? session : null), [session, user])
+
   const setLanguage = useCallback((code) => {
     setLang(code)
     setLangState(code)
   }, [])
-  const dbRef = useRef(db)
-  dbRef.current = db
-
-  useEffect(() => safeSet(DB_KEY, db), [db])
-  useEffect(() => safeSet(SESSION_KEY, session), [session])
 
   const notify = useCallback((message, tone = 'success') => {
     const id = uid()
@@ -68,7 +81,7 @@ export function StoreProvider({ children }) {
 
   const actions = useMemo(() => ({
     add(col, item) {
-      const rec = { id: uid(), createdAt: new Date().toISOString(), ...item }
+      const rec = { id: uid(), createdAt: new Date().toISOString(), createdBy: userRef.current?.id, ...item }
       setDb((d) => ({ ...d, [col]: [rec, ...d[col]] }))
       return rec
     },
@@ -94,14 +107,30 @@ export function StoreProvider({ children }) {
             return { ...a, records }
           })
         }
+        if (col === 'teachers') next.users = d.users.filter((u) => u.teacherId !== id)
         return next
+      })
+    },
+    /** O'qituvchining tizimga kirish hisobini yaratadi / yangilaydi / o'chiradi */
+    saveTeacherAccount(teacherId, { login, password, fullName }) {
+      setDb((d) => {
+        const existing = d.users.find((u) => u.teacherId === teacherId)
+        if (!login) return { ...d, users: d.users.filter((u) => u.teacherId !== teacherId) }
+        if (existing) {
+          return {
+            ...d,
+            users: d.users.map((u) => (u.id === existing.id ? { ...u, login, fullName, ...(password ? { password } : {}) } : u)),
+          }
+        }
+        const rec = { id: uid(), role: 'teacher', teacherId, login, password, fullName, active: true, createdAt: new Date().toISOString() }
+        return { ...d, users: [...d.users, rec] }
       })
     },
     saveAttendance(groupId, date, records) {
       setDb((d) => {
         const id = `${groupId}_${date}`
         const rest = d.attendance.filter((a) => a.id !== id)
-        return { ...d, attendance: [{ id, groupId, date, records }, ...rest] }
+        return { ...d, attendance: [{ id, groupId, date, records, createdBy: userRef.current?.id, updatedAt: new Date().toISOString() }, ...rest] }
       })
     },
     updateSettings(patch) {
@@ -115,15 +144,17 @@ export function StoreProvider({ children }) {
     },
     clearAll() {
       const e = emptyDb()
-      setDb((d) => ({ ...e, settings: d.settings }))
+      // Xodimlar hisoblari saqlanadi (o'qituvchilarnikidan tashqari), aks holda hech kim kira olmaydi
+      setDb((d) => ({ ...e, settings: d.settings, users: d.users.filter((u) => u.role !== 'teacher') }))
     },
     login(login, password) {
-      const admin = dbRef.current.settings.admin
-      if (login.trim() === admin.login && password === admin.password) {
-        setSession({ login: admin.login, fullName: admin.fullName, at: new Date().toISOString() })
-        return true
-      }
-      return false
+      const u = dbRef.current.users.find(
+        (x) => x.login.toLowerCase() === login.trim().toLowerCase() && x.password === password,
+      )
+      if (!u) return 'wrong'
+      if (u.active === false) return 'blocked'
+      setSession({ userId: u.id, at: new Date().toISOString() })
+      return 'ok'
     },
     logout() {
       setSession(null)
@@ -131,8 +162,8 @@ export function StoreProvider({ children }) {
   }), [])
 
   const value = useMemo(
-    () => ({ db, session, notify, lang, setLanguage, ...actions }),
-    [db, session, notify, lang, setLanguage, actions],
+    () => ({ db, session: user, user, notify, lang, setLanguage, ...actions }),
+    [db, user, notify, lang, setLanguage, actions],
   )
 
   return (

@@ -6,9 +6,9 @@ import { t } from '../i18n'
 import { today } from '../utils/format'
 
 export default function Settings() {
-  const { db, updateSettings, replaceAll, resetDemo, clearAll, notify } = useStore()
+  const { db, user, update, updateSettings, replaceAll, resetDemo, clearAll, notify } = useStore()
   const [v, set] = useForm({ centerName: db.settings.centerName, phone: db.settings.phone, address: db.settings.address })
-  const [acc, setAcc] = useState({ login: db.settings.admin.login, fullName: db.settings.admin.fullName, password: '', password2: '' })
+  const [acc, setAcc] = useState({ login: user.login, fullName: user.fullName, password: '', password2: '' })
   const [accErr, setAccErr] = useState('')
   const fileRef = useRef(null)
 
@@ -22,10 +22,9 @@ export default function Settings() {
     if (!acc.login.trim()) return setAccErr(t('form.required'))
     if (acc.password && acc.password.length < 6) return setAccErr(t('settings.passShort'))
     if (acc.password !== acc.password2) return setAccErr(t('settings.passMismatch'))
+    if (db.users.some((u) => u.login.toLowerCase() === acc.login.trim().toLowerCase() && u.id !== user.id)) return setAccErr(t('form.loginTaken'))
     setAccErr('')
-    updateSettings({
-      admin: { ...db.settings.admin, login: acc.login.trim(), fullName: acc.fullName, ...(acc.password ? { password: acc.password } : {}) },
-    })
+    update('users', user.id, { login: acc.login.trim(), fullName: acc.fullName, ...(acc.password ? { password: acc.password } : {}) })
     setAcc((a) => ({ ...a, password: '', password2: '' }))
     notify(t('common.saved'))
   }
@@ -58,7 +57,7 @@ export default function Settings() {
 
   const counts = [
     ['nav.students', db.students.length], ['nav.groups', db.groups.length], ['nav.teachers', db.teachers.length],
-    ['nav.payments', db.payments.length], ['nav.leads', db.leads.length], ['nav.expenses', db.expenses.length],
+    ['nav.payments', db.payments.length], ['nav.leads', db.leads.length], ['nav.staff', db.users.length],
   ]
 
   return (

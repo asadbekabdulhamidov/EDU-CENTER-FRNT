@@ -3,13 +3,14 @@ import { Avatar, Badge, Button, Card, Empty, IconButton, PageHeader, SearchInput
 import StudentForm from '../components/StudentForm'
 import PaymentModal from '../components/PaymentModal'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { Link } from '../router'
 import { t } from '../i18n'
 import { currentMonth, label, money, TONES } from '../utils/format'
 import { groupById, studentDebt } from '../utils/finance'
 
 export default function Students() {
-  const { db, remove, notify } = useStore()
+  const { db, user, remove, notify } = useStore()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('active')
   const [groupId, setGroupId] = useState('')
@@ -46,7 +47,7 @@ export default function Students() {
       <PageHeader
         title={t('nav.students')}
         subtitle={t('student.subtitle', { n: counts.active })}
-        actions={<Button icon="plus" onClick={() => setEdit({})}>{t('student.add')}</Button>}
+        actions={can(user, 'students.edit') && <Button icon="plus" onClick={() => setEdit({})}>{t('student.add')}</Button>}
       />
 
       <Tabs
@@ -116,9 +117,9 @@ export default function Students() {
                       {debt > 0 ? <b className="text-red">{money(debt)}</b> : <span className="text-green">{t('pay.ok')}</span>}
                     </td>
                     <td className="actions">
-                      <IconButton icon="wallet" title={t('pay.accept')} tone="green" onClick={() => setPayFor(s.id)} />
-                      <IconButton icon="edit" title={t('common.edit')} onClick={() => setEdit(s)} />
-                      <IconButton icon="trash" title={t('common.delete')} tone="red" onClick={() => del(s)} />
+                      {can(user, 'payments.add') && <IconButton icon="wallet" title={t('pay.accept')} tone="green" onClick={() => setPayFor(s.id)} />}
+                      {can(user, 'students.edit') && <IconButton icon="edit" title={t('common.edit')} onClick={() => setEdit(s)} />}
+                      {can(user, 'students.delete') && <IconButton icon="trash" title={t('common.delete')} tone="red" onClick={() => del(s)} />}
                     </td>
                   </tr>
                 ))}

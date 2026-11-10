@@ -7,8 +7,8 @@ export const emptyDb = () => ({
     centerName: "Bilim O'quv Markazi",
     phone: '+998 90 123 45 67',
     address: 'Toshkent sh., Chilonzor tumani',
-    admin: { login: 'admin', password: 'admin123', fullName: 'Administrator' },
   },
+  users: [],
   courses: [],
   teachers: [],
   groups: [],
@@ -18,6 +18,19 @@ export const emptyDb = () => ({
   leads: [],
   expenses: [],
 })
+
+/** Demo xodimlar: direktor, administrator va har bir demo o'qituvchi uchun hisob */
+export function demoUsers(teachers = [], director) {
+  const users = [
+    { id: 'u1', role: 'director', login: director?.login || 'admin', password: director?.password || 'admin123', fullName: director?.fullName || 'Rustam Aliyev', active: true },
+    { id: 'u2', role: 'admin', login: 'menejer', password: '123456', fullName: 'Dilfuza Rahimova', active: true },
+  ]
+  const logins = { t1: 'asadbek', t2: 'dilnoza', t3: 'jamshid' }
+  teachers.forEach((t) => {
+    if (logins[t.id]) users.push({ id: 'u-' + t.id, role: 'teacher', teacherId: t.id, login: logins[t.id], password: '123456', fullName: t.fullName, active: true })
+  })
+  return users
+}
 
 export function createSeed() {
   const db = emptyDb()
@@ -93,7 +106,7 @@ export function createSeed() {
         payments.push({
           id: uid(), studentId: s.id, groupId: gid, amount: pay, month: mon,
           date: k === 0 ? daysAgo((i % 8) + 1) : day(mon, 3 + (i % 12)),
-          method: methods[i % 4], note: '',
+          method: methods[i % 4], note: '', createdBy: i % 3 === 0 ? 'u1' : 'u2',
         })
       }
     })
@@ -135,5 +148,5 @@ export function createSeed() {
   }
   expenses.forEach((e) => { if (e.date > toISODate(now)) e.date = toISODate(now) })
 
-  return { ...db, courses, teachers, groups, students, payments, attendance, leads, expenses }
+  return { ...db, users: demoUsers(teachers), courses, teachers, groups, students, payments, attendance, leads, expenses }
 }

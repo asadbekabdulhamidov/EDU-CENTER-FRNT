@@ -5,6 +5,12 @@ import { LangSwitch } from '../components/Layout'
 import { useStore } from '../store/StoreContext'
 import { t } from '../i18n'
 
+const DEMO = [
+  { role: 'director', login: 'admin', password: 'admin123' },
+  { role: 'admin', login: 'menejer', password: '123456' },
+  { role: 'teacher', login: 'asadbek', password: '123456' },
+]
+
 export default function Login() {
   const { db, login } = useStore()
   const [form, setForm] = useState({ login: '', password: '' })
@@ -12,8 +18,13 @@ export default function Login() {
 
   const submit = (e) => {
     e.preventDefault()
-    if (!login(form.login, form.password)) setError(t('auth.wrong'))
+    const res = login(form.login, form.password)
+    if (res === 'wrong') setError(t('auth.wrong'))
+    if (res === 'blocked') setError(t('auth.blocked'))
   }
+
+  // Demo hisoblar faqat bazada mavjud bo'lsa ko'rsatiladi
+  const demo = DEMO.filter((d) => db.users.some((u) => u.login === d.login && u.password === d.password))
 
   return (
     <div className="login">
@@ -39,15 +50,25 @@ export default function Login() {
           <h1>{t('auth.title')}</h1>
           <p className="muted">{t('auth.subtitle')}</p>
           <Field label={t('auth.login')}>
-            <Input autoFocus value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} placeholder="admin" />
+            <Input autoFocus value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} placeholder="login" autoComplete="username" />
           </Field>
           <Field label={t('auth.password')} error={error}>
-            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••" />
+            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••" autoComplete="current-password" />
           </Field>
           <Button type="submit" className="btn-block">{t('auth.enter')}</Button>
-          <div className="demo-hint">
-            {t('auth.demo')}: <code>admin</code> / <code>admin123</code>
-          </div>
+          {demo.length > 0 && (
+            <div className="demo-hint">
+              <span>{t('auth.demo')}:</span>
+              <div className="demo-accounts">
+                {demo.map((d) => (
+                  <button type="button" key={d.login} onClick={() => { setForm({ login: d.login, password: d.password }); setError('') }}>
+                    <b>{t('role.' + d.role)}</b>
+                    <code>{d.login} / {d.password}</code>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>

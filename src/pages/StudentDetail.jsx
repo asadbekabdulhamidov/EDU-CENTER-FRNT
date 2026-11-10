@@ -3,13 +3,14 @@ import { Avatar, Badge, Button, Card, Empty, IconButton, PageHeader, StatCard, c
 import StudentForm from '../components/StudentForm'
 import PaymentModal from '../components/PaymentModal'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { Link } from '../router'
 import { t } from '../i18n'
 import { addMonths, currentMonth, fmtDate, label, monthLabel, money, TONES, ATT_SHORT, wdLabel } from '../utils/format'
 import { attendanceStats, courseById, groupById, studentDue, studentPaid, teacherById } from '../utils/finance'
 
 export default function StudentDetail({ id }) {
-  const { db, remove, notify } = useStore()
+  const { db, user, remove, notify } = useStore()
   const [editing, setEditing] = useState(false)
   const [paying, setPaying] = useState(false)
   const s = db.students.find((x) => x.id === id)
@@ -45,8 +46,8 @@ export default function StudentDetail({ id }) {
         }
         actions={
           <>
-            <Button variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t('common.edit')}</Button>
-            <Button icon="wallet" onClick={() => setPaying(true)}>{t('pay.accept')}</Button>
+            {can(user, 'students.edit') && <Button variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t('common.edit')}</Button>}
+            {can(user, 'payments.add') && <Button icon="wallet" onClick={() => setPaying(true)}>{t('pay.accept')}</Button>}
           </>
         }
       />
@@ -146,7 +147,7 @@ export default function StudentDetail({ id }) {
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>{t('field.date')}</th><th>{t('field.forMonth')}</th><th>{t('field.group')}</th><th>{t('field.method')}</th><th className="num">{t('field.amount')}</th><th /></tr>
+                <tr><th>{t('field.date')}</th><th>{t('field.forMonth')}</th><th>{t('field.group')}</th><th>{t('field.method')}</th><th>{t('pay.receivedBy')}</th><th className="num">{t('field.amount')}</th><th /></tr>
               </thead>
               <tbody>
                 {payments.map((p) => (
@@ -155,8 +156,9 @@ export default function StudentDetail({ id }) {
                     <td>{monthLabel(p.month)}</td>
                     <td>{groupById(db, p.groupId)?.name || '—'}</td>
                     <td><Badge>{t('method.' + p.method)}</Badge></td>
+                    <td className="muted">{db.users.find((u) => u.id === p.createdBy)?.fullName || '—'}</td>
                     <td className="num"><b>{money(p.amount)}</b></td>
-                    <td className="actions"><IconButton icon="trash" tone="red" title={t('common.delete')} onClick={() => delPayment(p)} /></td>
+                    <td className="actions">{can(user, 'payments.delete') && <IconButton icon="trash" tone="red" title={t('common.delete')} onClick={() => delPayment(p)} />}</td>
                   </tr>
                 ))}
               </tbody>

@@ -12,7 +12,20 @@ npm install
 npm run dev
 ```
 
-Brauzerda `http://localhost:5173` ochiladi. Demo kirish: **admin / admin123**
+Brauzerda `http://localhost:5173` ochiladi.
+
+## Rollar va demo hisoblar
+
+| Rol | Login / parol | Nimaga ruxsat |
+|---|---|---|
+| **Direktor** | `admin` / `admin123` | Hammasi: moliya, xarajatlar, maoshlar, xodimlar, sozlamalar |
+| **Administrator** | `menejer` / `123456` | O'quvchilar, guruhlar, kurslar (ko'rish), lidlar, to'lov qabul qilish, davomat. Xarajat, foyda, maoshlarni ko'rmaydi; to'lovni o'chira olmaydi |
+| **O'qituvchi** | `asadbek` / `123456` (yana `dilnoza`, `jamshid`) | Faqat o'z guruhlari: kabinet, haftalik jadval, davomat, o'z maoshi. O'quvchi to'lovi faqat "To'langan / Qarzdor" ko'rinishida |
+
+- Yangi o'qituvchiga kirish huquqi **O'qituvchilar → tahrirlash → Login/Parol** orqali beriladi.
+- Direktor va administratorlar **Xodimlar** bo'limida qo'shiladi, bloklanadi (oxirgi faol direktorni bloklab bo'lmaydi).
+- Har bir to'lovda **kim qabul qilgani** saqlanadi.
+- Ruxsatlar bitta joyda: `src/utils/permissions.js`.
 
 ## Bo'limlar
 
@@ -27,7 +40,9 @@ Brauzerda `http://localhost:5173` ochiladi. Demo kirish: **admin / admin123**
 | Davomat | Guruh + sana, Keldi/Kechikdi/Kelmadi, "Hammasi keldi", oxirgi 10 dars jadvali |
 | Lidlar | Kanban (drag & drop), holatlar, o'quvchiga aylantirish, konversiya foizi |
 | Xarajatlar | Turkumlar, oy bo'yicha, taxminiy foyda (tushum − xarajat − maosh) |
-| Sozlamalar | Markaz ma'lumotlari, login/parol, til, JSON zaxira/tiklash, demo ma'lumot, tozalash |
+| Xodimlar | Direktor/administrator hisoblari, bloklash, rollar tavsifi |
+| O'qituvchi kabineti | Bugungi darslar, haftalik jadval, guruhlar, davomat, oylik maosh |
+| Sozlamalar | Markaz ma'lumotlari, o'z login/parolini o'zgartirish, til, JSON zaxira/tiklash, demo ma'lumot, tozalash |
 
 ## Hisob-kitob qoidasi
 
@@ -54,8 +69,9 @@ noto'g'ri chiqsa uchinchi element sifatida qo'lda yozing: `['Iyun', 'Июнь', 
 ## Keyingi qadamlar (kamchiliklar)
 
 - Backend (Node.js + DB) va API ga ulash
-- Rollar: admin, menejer, o'qituvchi, kassir
 - SMS / Telegram eslatmalar (qarzdorlarga, darsdan qolganlarga)
-- Haqiqiy autentifikatsiya (hozir parol localStorage'da)
+- Haqiqiy autentifikatsiya (hozir parol localStorage'da ochiq — ruxsatlar faqat interfeysda, backend bilan serverda tekshirilishi kerak)
+- To'lovni o'chirish o'rniga "bekor qilish + sabab"
+- Kassir roli (kerak bo'lsa)
 - Hisobotlar: o'qituvchi bo'yicha, kurs bo'yicha, PDF/Excel
 - O'quvchi guruhdan chiqqan sanani saqlash (qarz hisobini aniqlashtirish)

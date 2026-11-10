@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Avatar, Badge, Button, Card, Empty, PageHeader, StatCard } from '../components/ui'
 import PaymentModal from '../components/PaymentModal'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { Link } from '../router'
 import { t } from '../i18n'
 import {
@@ -10,7 +11,8 @@ import {
 import { courseById, debtors, expenseByDate, groupStudents, incomeByDate, studentById, teacherById } from '../utils/finance'
 
 export default function Dashboard() {
-  const { db } = useStore()
+  const { db, user } = useStore()
+  const finance = can(user, 'finance.view')
   const [payFor, setPayFor] = useState(null)
   const month = currentMonth()
   const wd = weekdayOf(today())
@@ -33,7 +35,7 @@ export default function Dashboard() {
     const m = addMonths(month, i - 5)
     return { m, income: incomeByDate(db, m), expense: expenseByDate(db, m) }
   })
-  const max = Math.max(1, ...chart.flatMap((c) => [c.income, c.expense]))
+  const max = Math.max(1, ...chart.flatMap((c) => (finance ? [c.income, c.expense] : [c.income])))
 
   const recent = [...db.payments].sort((a, b) => (b.date + (b.createdAt || '')).localeCompare(a.date + (a.createdAt || ''))).slice(0, 6)
 
@@ -52,20 +54,24 @@ export default function Dashboard() {
           foot={prevIncome ? <span className={growth >= 0 ? 'text-green' : 'text-red'}>{growth >= 0 ? '+' : ''}{growth}% {t('dash.vsPrev')}</span> : '—'} />
         <StatCard label={t('dash.debt')} value={shortMoney(totalDebt)} icon="alert" tone="red"
           foot={t('dash.debtorsCount', { n: debtList.length })} />
-        <StatCard label={t('dash.profit')} value={shortMoney(income - expense)} icon="wallet" tone="amber"
-          foot={`${t('nav.expenses')}: ${shortMoney(expense)}`} />
+        {finance ? (
+          <StatCard label={t('dash.profit')} value={shortMoney(income - expense)} icon="wallet" tone="amber"
+            foot={`${t('nav.expenses')}: ${shortMoney(expense)}`} />
+        ) : (
+          <StatCard label={t('nav.leads')} value={newLeads} icon="funnel" tone="violet" foot={t('dash.newLeads', { n: newLeads })} />
+        )}
       </div>
 
       <div className="grid-2">
-        <Card title={t('dash.chartTitle')} actions={
-          <div className="legend"><span className="dot dot-blue" />{t('dash.incomeShort')}<span className="dot dot-amber" />{t('nav.expenses')}</div>
+        <Card title={finance ? t('dash.chartTitle') : t('dash.chartIncome')} actions={
+          <div className="legend"><span className="dot dot-blue" />{t('dash.incomeShort')}{finance && <><span className="dot dot-amber" />{t('nav.expenses')}</>}</div>
         }>
           <div className="bars">
             {chart.map((c) => (
               <div className="bar-col" key={c.m} title={`${monthLabel(c.m)}\n${money(c.income)}\n${money(c.expense)}`}>
                 <div className="bar-pair">
                   <div className="bar bar-blue" style={{ height: `${(c.income / max) * 100}%` }} />
-                  <div className="bar bar-amber" style={{ height: `${(c.expense / max) * 100}%` }} />
+                  {finance && <div className="bar bar-amber" style={{ height: `${(c.expense / max) * 100}%` }} />}
                 </div>
                 <span className="bar-label">{monthShort(Number(c.m.slice(5)) - 1)}</span>
                 <span className="bar-value">{shortMoney(c.income)}</span>

@@ -2,11 +2,12 @@ import { useState } from 'react'
 import Icon from './Icon'
 import { Avatar } from './ui'
 import { useStore } from '../store/StoreContext'
+import { can } from '../utils/permissions'
 import { LANGS, t } from '../i18n'
 import { fmtDate, today, wdFull, weekdayOf } from '../utils/format'
 
 export const NAV = [
-  { key: '', icon: 'home', label: 'nav.dashboard' },
+  { key: '', page: 'dashboard', icon: 'home', label: 'nav.dashboard' },
   { key: 'students', icon: 'students', label: 'nav.students' },
   { key: 'groups', icon: 'groups', label: 'nav.groups' },
   { key: 'teachers', icon: 'teacher', label: 'nav.teachers' },
@@ -15,8 +16,12 @@ export const NAV = [
   { key: 'attendance', icon: 'check', label: 'nav.attendance' },
   { key: 'leads', icon: 'funnel', label: 'nav.leads' },
   { key: 'expenses', icon: 'receipt', label: 'nav.expenses' },
+  { key: 'staff', icon: 'shield', label: 'nav.staff' },
   { key: 'settings', icon: 'settings', label: 'nav.settings' },
 ]
+
+/** Bo'limga kirish ruxsati kaliti: '' -> page.dashboard */
+export const pagePerm = (section) => 'page.' + (section || 'dashboard')
 
 export function LangSwitch({ compact }) {
   const { lang, setLanguage } = useStore()
@@ -47,7 +52,7 @@ export default function Layout({ active, children }) {
           </div>
         </div>
         <nav>
-          {NAV.map((n) => (
+          {NAV.filter((n) => can(session, pagePerm(n.key))).map((n) => (
             <a
               key={n.key}
               href={'#/' + n.key}
@@ -64,7 +69,7 @@ export default function Layout({ active, children }) {
           <Avatar name={session?.fullName || 'A'} size={32} />
           <div className="who">
             <strong>{session?.fullName}</strong>
-            <small>{t('common.admin')}</small>
+            <small>{t('role.' + session?.role)}</small>
           </div>
           <button className="icon-btn ghost-light" onClick={logout} title={t('auth.logout')} aria-label={t('auth.logout')}>
             <Icon name="logout" size={17} />

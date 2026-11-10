@@ -38,7 +38,7 @@ export default function Teachers() {
               <thead>
                 <tr>
                   <th>{t('field.fullName')}</th><th>{t('field.phone')}</th><th>{t('field.subject')}</th><th>{t('nav.groups')}</th>
-                  <th>{t('field.salaryType')}</th><th className="num">{t('teacher.salaryMonth')}</th><th />
+                  <th>{t('field.salaryType')}</th><th>{t('teacher.account')}</th><th className="num">{t('teacher.salaryMonth')}</th><th />
                 </tr>
               </thead>
               <tbody>
@@ -62,6 +62,15 @@ export default function Teachers() {
                         <small className="muted">{t('group.studentsN', { n: studentsN })}</small>
                       </td>
                       <td>{tch.salaryType === 'percent' ? `${tch.salaryValue}% ${t('teacher.ofPayments')}` : money(tch.salaryValue)}</td>
+                      <td>
+                        {(() => {
+                          const acc = db.users.find((u) => u.teacherId === tch.id)
+                          if (!acc) return <Badge tone="gray">{t('teacher.noAccount')}</Badge>
+                          return acc.active === false
+                            ? <Badge tone="red">{acc.login} · {t('staff.inactive')}</Badge>
+                            : <code className="code">{acc.login}</code>
+                        })()}
+                      </td>
                       <td className="num"><b>{money(teacherSalary(db, tch, month))}</b></td>
                       <td className="actions">
                         <IconButton icon="edit" title={t('common.edit')} onClick={() => setEdit(tch)} />
@@ -86,8 +95,12 @@ function TeacherForm({ open, onClose, teacher }) {
 }
 
 function Inner({ onClose, teacher }) {
-  const { add, update, notify } = useStore()
-  const [v, set] = useForm({ fullName: '', phone: '+998 ', subject: '', salaryType: 'percent', salaryValue: 40, hiredAt: today(), ...teacher })
+  const { db, add, update, saveTeacherAccount, notify } = useStore()
+  const account = teacher && db.users.find((u) => u.teacherId === teacher.id)
+  const [v, set] = useForm({
+    fullName: '', phone: '+998 ', subject: '', salaryType: 'percent', salaryValue: 40, hiredAt: today(), ...teacher,
+    login: account?.login || '', password: '',
+  })
   const [errors, setErrors] = useState({})
   const submit = (e) => {
     e.preventDefault()
@@ -96,11 +109,18 @@ function Inner({ onClose, teacher }) {
     if (v.phone.replace(/\D/g, '').length < 9) errs.phone = t('form.phone')
     if (!(Number(v.salaryValue) > 0)) errs.salaryValue = t('form.positive')
     if (v.salaryType === 'percent' && Number(v.salaryValue) > 100) errs.salaryValue = '0–100%'
+    if (v.login) {
+      if (!/^[a-zA-Z0-9_.]{3,}$/.test(v.login)) errs.login = t('form.login')
+      else if (db.users.some((u) => u.login.toLowerCase() === v.login.toLowerCase() && u.id !== account?.id)) errs.login = t('form.loginTaken')
+      if (!account && v.password.length < 6) errs.password = t('settings.passShort')
+      if (account && v.password && v.password.length < 6) errs.password = t('settings.passShort')
+    }
     setErrors(errs)
     if (Object.keys(errs).length) return
-    const data = { ...v, salaryValue: Number(v.salaryValue) }
-    if (teacher) update('teachers', teacher.id, data)
-    else add('teachers', data)
+    const { login, password, ...rest } = v
+    const data = { ...rest, salaryValue: Number(v.salaryValue) }
+    const saved = teacher ? (update('teachers', teacher.id, data), teacher) : add('teachers', data)
+    if (login || account) saveTeacherAccount(saved.id, { login: login.trim(), password, fullName: data.fullName })
     notify(t('common.saved'))
     onClose()
   }
@@ -121,6 +141,16 @@ function Inner({ onClose, teacher }) {
           <Input type="number" min="0" value={v.salaryValue} onChange={set('salaryValue')} />
         </Field>
         <Field label={t('field.hiredAt')}><Input type="date" value={v.hiredAt} onChange={set('hiredAt')} /></Field>
+        <div className="form-section field-full">
+          <strong>{t('teacher.accountTitle')}</strong>
+          <span className="muted">{t('teacher.accountHint')}</span>
+        </div>
+        <Field label={t('auth.login')} error={errors.login} hint={account ? t('teacher.clearLogin') : t('form.loginHint')}>
+          <Input value={v.login} onChange={set('login')} autoComplete="off" placeholder="ism.familiya" />
+        </Field>
+        <Field label={account ? t('settings.newPassword') : t('auth.password')} error={errors.password} hint={account ? t('settings.passHint') : ''}>
+          <Input type="text" value={v.password} onChange={set('password')} autoComplete="new-password" disabled={!v.login} />
+        </Field>
       </form>
     </Modal>
   )

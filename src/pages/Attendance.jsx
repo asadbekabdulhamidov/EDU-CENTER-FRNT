@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Avatar, Button, Card, Empty, Field, Input, PageHeader, Select } from '../components/ui'
 import { useStore } from '../store/StoreContext'
+import { can, visibleGroups } from '../utils/permissions'
 import { Link, navigate } from '../router'
 import { t } from '../i18n'
 import { ATT_SHORT, fmtDate, label, today, wdFull, wdLabel, weekdayOf } from '../utils/format'
@@ -9,13 +10,13 @@ import { groupStudents } from '../utils/finance'
 const STATES = ['present', 'late', 'absent']
 
 export default function Attendance({ groupId }) {
-  const { db, saveAttendance, notify } = useStore()
-  const activeGroups = db.groups.filter((g) => g.status !== 'finished')
+  const { db, user, saveAttendance, notify } = useStore()
+  const activeGroups = visibleGroups(db, user).filter((g) => g.status !== 'finished')
   const todayWd = weekdayOf(today())
   const defaultGroup = groupId || activeGroups.find((g) => g.days.includes(todayWd))?.id || activeGroups[0]?.id || ''
   const [gid, setGid] = useState(defaultGroup)
   const [date, setDate] = useState(today())
-  const group = db.groups.find((g) => g.id === gid)
+  const group = activeGroups.find((g) => g.id === gid)
   const students = useMemo(() => (group ? groupStudents(db, group.id).sort((a, b) => a.fullName.localeCompare(b.fullName)) : []), [db, group])
   const existing = db.attendance.find((a) => a.id === `${gid}_${date}`)
   const [records, setRecords] = useState({})
@@ -57,6 +58,7 @@ export default function Attendance({ groupId }) {
   )
   const summary = STATES.map((st) => ({ st, n: students.filter((s) => records[s.id] === st).length }))
 
+  if (groupId && !activeGroups.some((g) => g.id === groupId)) return <Empty icon="lock" title={t('common.noAccess')} text={t('common.noAccessHint')} />
   if (!activeGroups.length) return <><PageHeader title={t('nav.attendance')} /><Empty icon="groups" title={t('group.none')} /></>
 
   return (
@@ -91,14 +93,16 @@ export default function Attendance({ groupId }) {
         pad={false}
       >
         {students.length === 0 ? (
-          <Empty icon="students" title={t('group.noStudents')} action={group && <Link className="btn btn-ghost" to={`/groups/${group.id}`}>{t('group.addStudent')}</Link>} />
+          <Empty icon="students" title={t('group.noStudents')} action={group && can(user, 'groups.edit') && <Link className="btn btn-ghost" to={`/groups/${group.id}`}>{t('group.addStudent')}</Link>} />
         ) : (
           <ul className="att-list">
             {students.map((s, i) => (
               <li key={s.id}>
                 <span className="muted idx">{i + 1}</span>
                 <Avatar name={s.fullName} size={32} />
-                <Link to={`/students/${s.id}`} className="att-name">{s.fullName}</Link>
+                {can(user, 'page.students')
+                  ? <Link to={`/students/${s.id}`} className="att-name">{s.fullName}</Link>
+                  : <span className="att-name">{s.fullName}</span>}
                 <div className="seg">
                   {STATES.map((st) => (
                     <button key={st} className={`seg-${st} ${records[s.id] === st ? 'on' : ''}`} onClick={() => setOne(s.id, st)}>

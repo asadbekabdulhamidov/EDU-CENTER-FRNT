@@ -2,32 +2,35 @@ import { useMemo, useState } from 'react'
 import { Badge, Button, Empty, Field, Input, Modal, PageHeader, SearchInput, Select, Tabs, useForm } from '../components/ui'
 import Icon from '../components/Icon'
 import { useStore } from '../store/StoreContext'
+import { can, visibleGroups } from '../utils/permissions'
 import { Link } from '../router'
 import { t } from '../i18n'
 import { label, money, today, TONES, WEEKDAYS, wdLabel } from '../utils/format'
 import { courseById, groupStudents, teacherById } from '../utils/finance'
 
 export default function Groups() {
-  const { db } = useStore()
+  const { db, user } = useStore()
+  const mine = visibleGroups(db, user)
+  const canEdit = can(user, 'groups.edit')
   const [status, setStatus] = useState('active')
   const [q, setQ] = useState('')
   const [edit, setEdit] = useState(null)
 
   const list = useMemo(() => {
     const query = q.trim().toLowerCase()
-    return db.groups
+    return mine
       .filter((g) => status === 'all' || g.status === status)
       .filter((g) => !query || g.name.toLowerCase().includes(query) || courseById(db, g.courseId)?.name.toLowerCase().includes(query))
-  }, [db, status, q])
+  }, [db, mine, status, q])
 
-  const count = (st) => db.groups.filter((g) => g.status === st).length
+  const count = (st) => mine.filter((g) => g.status === st).length
 
   return (
     <>
       <PageHeader
         title={t('nav.groups')}
         subtitle={t('group.subtitle', { n: count('active') })}
-        actions={<Button icon="plus" onClick={() => setEdit({})}>{t('group.add')}</Button>}
+        actions={canEdit && <Button icon="plus" onClick={() => setEdit({})}>{t('group.add')}</Button>}
       />
       <div className="toolbar toolbar-plain">
         <Tabs
@@ -37,14 +40,14 @@ export default function Groups() {
             { value: 'active', label: t('group.active'), count: count('active') },
             { value: 'forming', label: t('group.forming'), count: count('forming') },
             { value: 'finished', label: t('group.finished'), count: count('finished') },
-            { value: 'all', label: t('common.all'), count: db.groups.length },
+            { value: 'all', label: t('common.all'), count: mine.length },
           ]}
         />
         <SearchInput value={q} onChange={setQ} />
       </div>
 
       {list.length === 0 ? (
-        <Empty icon="groups" action={<Button icon="plus" onClick={() => setEdit({})}>{t('group.add')}</Button>} />
+        <Empty icon="groups" action={canEdit && <Button icon="plus" onClick={() => setEdit({})}>{t('group.add')}</Button>} />
       ) : (
         <div className="cards-grid">
           {list.map((g) => {
@@ -65,7 +68,7 @@ export default function Groups() {
                 </div>
                 <div className="group-card-foot">
                   <span><Icon name="students" size={15} /> {t('group.studentsN', { n })}</span>
-                  <b>{money(g.price)}</b>
+                  {can(user, 'money.view') && <b>{money(g.price)}</b>}
                 </div>
               </Link>
             )

@@ -11,6 +11,8 @@ export const DICT = {
   'common.back': ['Orqaga', 'Назад'],
   'common.cancel': ['Bekor qilish', 'Отмена'],
   'common.choose': ['Tanlang', 'Выберите'],
+  'common.chooseDate': ['Sanani tanlang', 'Выберите дату'],
+  'common.chooseMonth': ['Oyni tanlang', 'Выберите месяц'],
   'common.close': ['Yopish', 'Закрыть'],
   'common.confirmDelete': ["\"{name}\" o'chirilsinmi?", 'Удалить «{name}»?'],
   'common.delete': ["O'chirish", 'Удалить'],

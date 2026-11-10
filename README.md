@@ -1,6 +1,6 @@
 # EduCenter ERP — o'quv markaz uchun MVP (frontend)
 
-O'quv markazni boshqarish tizimining **faqat frontend** qismi. Barcha ma'lumotlar brauzerning
+O'quv markazni boshqarish tizimining **faqat frontend** qismi (React + Vite, forma elementlari — **Ant Design**). Barcha ma'lumotlar brauzerning
 `localStorage`ida saqlanadi — backend keyin ulanadi.
 
 Interfeys 3 tilda: **O'zbekcha (lotin)**, **Ўзбекча (кирилл)**, **Русский**.
@@ -57,10 +57,17 @@ src/
   i18n/           # tarjima: dict.js (lug'at), index.js (t(), kirill transliteratsiya)
   store/          # StoreContext (localStorage), seed.js (demo ma'lumot)
   utils/          # format.js, finance.js
-  components/     # Layout, ui (Button, Modal, ...), Icon, PaymentModal, StudentForm
+  components/     # Layout, ui (Button, Modal, Input/Select — antd adapter), AntdProvider, Icon, PaymentModal, StudentForm
   pages/          # har bir bo'lim sahifasi
   router.jsx      # hash router (#/students, #/groups/g1)
 ```
+
+### Forma elementlari (Ant Design)
+`src/components/ui.jsx` dagi `Input`, `Select`, `Textarea`, `SearchInput` — antd komponentlari ustidagi yupqa qatlam.
+Sahifalar oddiy satr qiymat bilan ishlaydi (`'2026-11-10'`, `'2026-11'`, `'14:00'`) va `onChange={(e) => e.target.value}`:
+- `<Input type="date|month|time|password|number" />` → `DatePicker` / `TimePicker` / `Input.Password` / `Input`
+- `<Select options placeholder />` → `antd Select` (6 tadan ko'p variantda qidiruv, `placeholder` bo'lsa × tozalash)
+- Til (`uz_UZ`, `ru_RU`) va tema ranglari: `src/components/AntdProvider.jsx`
 
 ### Yangi tarjima qo'shish
 `src/i18n/dict.js` ga `'kalit': ['lotin', 'русский']` qo'shing. Kirill avtomatik hosil bo'ladi;

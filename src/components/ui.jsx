@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { DatePicker, Input as AntInput, Select as AntSelect, TimePicker } from 'antd'
+import dayjs from 'dayjs'
 import Icon from './Icon'
 import { t } from '../i18n'
 import { initials } from '../utils/format'
@@ -21,34 +23,105 @@ export function IconButton({ icon, title, tone, ...rest }) {
 }
 
 export function Field({ label, hint, error, children, full }) {
+  // <label> emas, <div>: antd Select label ichida bo'lsa dropdown ikki marta ochilib-yopiladi
   return (
-    <label className={`field ${full ? 'field-full' : ''}`}>
+    <div className={`field ${full ? 'field-full' : ''} ${error ? 'field-has-error' : ''}`}>
       {label && <span className="field-label">{label}</span>}
       {children}
       {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
-    </label>
+    </div>
   )
 }
 
-export const Input = (props) => <input className="input" {...props} />
-export const Textarea = (props) => <textarea className="input" rows={3} {...props} />
-export function Select({ options, placeholder, ...rest }) {
+// ---------- Forma elementlari (Ant Design) ----------
+// Sahifalar eski API'dan foydalanadi: <Input type="date" value="2026-11-10" onChange={(e) => e.target.value} />
+// Shu sababli antd qiymatlari (dayjs, value) bu yerda oddiy satr va { target: { value } } ga aylantiriladi.
+
+const fakeEvent = (value) => ({ target: { value } })
+const DATE_FORMATS = {
+  date: { store: 'YYYY-MM-DD', show: 'DD.MM.YYYY', picker: 'date' },
+  month: { store: 'YYYY-MM', show: 'MMMM YYYY', picker: 'month' },
+}
+const toDayjs = (v, fmt) => (v ? (dayjs(v, fmt).isValid() ? dayjs(v, fmt) : null) : null)
+
+export function Input({ type = 'text', value, onChange, min, max, className = '', style, ...rest }) {
+  const status = rest['aria-invalid'] ? 'error' : undefined
+  if (type === 'date' || type === 'month') {
+    const f = DATE_FORMATS[type]
+    return (
+      <DatePicker
+        className={`ant-field ${className}`}
+        style={{ width: '100%', ...style }}
+        picker={f.picker}
+        format={f.show}
+        value={toDayjs(value, f.store)}
+        onChange={(d) => onChange?.(fakeEvent(d ? d.format(f.store) : ''))}
+        disabledDate={(d) => (max && d.isAfter(dayjs(max), type === 'month' ? 'month' : 'day')) || (min && d.isBefore(dayjs(min), 'day'))}
+        placeholder={rest.placeholder || (type === 'month' ? t('common.chooseMonth') : t('common.chooseDate'))}
+        disabled={rest.disabled}
+        status={status}
+      />
+    )
+  }
+  if (type === 'time') {
+    return (
+      <TimePicker
+        className={`ant-field ${className}`}
+        style={{ width: '100%', ...style }}
+        format="HH:mm"
+        minuteStep={5}
+        needConfirm={false}
+        value={toDayjs(value, 'HH:mm')}
+        onChange={(d) => onChange?.(fakeEvent(d ? d.format('HH:mm') : ''))}
+        placeholder="--:--"
+        disabled={rest.disabled}
+        status={status}
+      />
+    )
+  }
+  if (type === 'password') {
+    return <AntInput.Password className={`ant-field ${className}`} style={style} value={value} onChange={onChange} {...rest} />
+  }
+  return <AntInput className={`ant-field ${className}`} style={style} type={type} min={min} max={max} value={value} onChange={onChange} {...rest} />
+}
+
+export const Textarea = ({ rows = 3, ...props }) => (
+  <AntInput.TextArea className="ant-field" autoSize={{ minRows: rows, maxRows: 8 }} {...props} />
+)
+
+/**
+ * options: [{ value, label }]. placeholder berilsa — tozalash (×) tugmasi chiqadi va '' qiymat bo'sh hisoblanadi.
+ * onChange eski uslubda: (e) => e.target.value
+ */
+export function Select({ options, placeholder, value, onChange, className = '', style, disabled, size }) {
   return (
-    <select className="input" {...rest}>
-      {placeholder !== undefined && <option value="">{placeholder}</option>}
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
+    <AntSelect
+      className={`ant-field ${className}`}
+      style={{ width: '100%', ...style }}
+      size={size}
+      value={value === '' || value === undefined || value === null ? undefined : value}
+      onChange={(v) => onChange?.(fakeEvent(v ?? ''))}
+      options={options}
+      placeholder={placeholder || t('common.choose')}
+      allowClear={placeholder !== undefined}
+      showSearch={options.length > 6}
+      optionFilterProp="label"
+      disabled={disabled}
+      notFoundContent={t('common.empty')}
+    />
   )
 }
 
 export function SearchInput({ value, onChange, placeholder }) {
   return (
-    <div className="search">
-      <Icon name="search" size={16} />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || t('common.search')} />
-    </div>
+    <AntInput
+      className="ant-field search-field"
+      allowClear
+      prefix={<Icon name="search" size={16} />}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder || t('common.search')}
+    />
   )
 }
 

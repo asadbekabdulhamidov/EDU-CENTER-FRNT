@@ -37,9 +37,9 @@ export default function Groups() {
           value={status}
           onChange={setStatus}
           items={[
-            { value: 'active', label: t('group.active'), count: count('active') },
-            { value: 'forming', label: t('group.forming'), count: count('forming') },
-            { value: 'finished', label: t('group.finished'), count: count('finished') },
+            { value: 'active', label: t('group.tabActive'), count: count('active') },
+            { value: 'forming', label: t('group.tabForming'), count: count('forming') },
+            { value: 'finished', label: t('group.tabFinished'), count: count('finished') },
             { value: 'all', label: t('common.all'), count: mine.length },
           ]}
         />
@@ -109,7 +109,8 @@ function GroupFormInner({ onClose, group }) {
     if (!v.teacherId) errs.teacherId = t('form.required')
     if (!v.days.length) errs.days = t('form.required')
     if (!(Number(v.price) > 0)) errs.price = t('form.positive')
-    if (v.endTime <= v.startTime) errs.endTime = t('form.timeOrder')
+    if (!v.startTime || !v.endTime) errs.endTime = t('form.required')
+    else if (v.endTime <= v.startTime) errs.endTime = t('form.timeOrder')
     // Xona to'qnashuvi: bir xil xona, kesishgan kun va vaqt
     const clash = v.room && db.groups.find((g) =>
       g.id !== group?.id && g.status !== 'finished' && g.room.trim().toLowerCase() === v.room.trim().toLowerCase() &&
@@ -168,7 +169,7 @@ function GroupFormInner({ onClose, group }) {
           <Input type="time" value={v.endTime} onChange={set('endTime')} />
         </Field>
         <Field label={t('field.room')} error={errors.room}>
-          <Input value={v.room} onChange={set('room')} placeholder="101-xona" />
+          <Input value={v.room} onChange={set('room')} placeholder={t('field.roomPh')} />
         </Field>
         <Field label={t('field.monthlyPrice')} error={errors.price}>
           <Input type="number" min="0" step="10000" value={v.price} onChange={set('price')} />

@@ -54,9 +54,9 @@ export default function Students() {
         value={status}
         onChange={setStatus}
         items={[
-          { value: 'active', label: t('student.active'), count: counts.active },
-          { value: 'frozen', label: t('student.frozen'), count: counts.frozen },
-          { value: 'left', label: t('student.left'), count: counts.left },
+          { value: 'active', label: t('student.tabActive'), count: counts.active },
+          { value: 'frozen', label: t('student.tabFrozen'), count: counts.frozen },
+          { value: 'left', label: t('student.tabLeft'), count: counts.left },
           { value: 'all', label: t('common.all'), count: counts.all },
         ]}
       />

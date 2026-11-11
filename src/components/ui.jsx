@@ -3,7 +3,7 @@ import { DatePicker, Input as AntInput, Select as AntSelect, TimePicker } from '
 import dayjs from 'dayjs'
 import Icon from './Icon'
 import { t } from '../i18n'
-import { initials } from '../utils/format'
+import { initials, monthLabel } from '../utils/format'
 
 export function Button({ variant = 'primary', size, icon, children, className = '', ...rest }) {
   return (
@@ -40,7 +40,8 @@ export function Field({ label, hint, error, children, full }) {
 const fakeEvent = (value) => ({ target: { value } })
 const DATE_FORMATS = {
   date: { store: 'YYYY-MM-DD', show: 'DD.MM.YYYY', picker: 'date' },
-  month: { store: 'YYYY-MM', show: 'MMMM YYYY', picker: 'month' },
+  // Oy maydoni ilovaning o'z oy nomlari bilan: "Noyabr 2026" / "Ноябр 2026" / "Ноябрь 2026"
+  month: { store: 'YYYY-MM', show: (d) => monthLabel(d.format('YYYY-MM')), picker: 'month', readOnly: true },
 }
 const toDayjs = (v, fmt) => (v ? (dayjs(v, fmt).isValid() ? dayjs(v, fmt) : null) : null)
 
@@ -54,6 +55,7 @@ export function Input({ type = 'text', value, onChange, min, max, className = ''
         style={{ width: '100%', ...style }}
         picker={f.picker}
         format={f.show}
+        inputReadOnly={f.readOnly}
         value={toDayjs(value, f.store)}
         onChange={(d) => onChange?.(fakeEvent(d ? d.format(f.store) : ''))}
         disabledDate={(d) => (max && d.isAfter(dayjs(max), type === 'month' ? 'month' : 'day')) || (min && d.isBefore(dayjs(min), 'day'))}
